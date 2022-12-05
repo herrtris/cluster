@@ -12,6 +12,7 @@ library(fastDummies)
 library(tibble)
 library(cluster)
 library(dendextend)
+library(purrr)
 
 getwd()
 setwd("~/Landwirtschaftliche Betriebslehre/Projekt_china_data/Dataclustering")
@@ -92,10 +93,32 @@ summary(farms_clusterd)
 # visualizing clusters
 ggplot(farms_clustered, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
 
+# calculating the mean by cluster
+farms_clusterd %>% group_by(cluster) %>% summarise_all(list(mean))
 
 
 
+##################### clustering with kmeans method #####################
 
+# finding the right amount of clusters k with elbow method
+tot_wihinss <- map_dbl(1:10, function(k){
+                model<- kmeans(x= clus_sf_scaled, centers = k)
+                model$tot.withinss})
+
+elbow_df <- data.frame(
+            k=1:10,
+            tot_withinss=tot_wihinss)
+
+print(elbow_df)
+ggplot(elbow_df, aes(x=k, y=tot_wihinss))+geom_line()+ scale_x_continuous(breaks=1:10)
+
+# judging from the plot I would choose k=4 for clustering
+
+model <- kmeans(clus_sf_scaled, centers=4)
+farms_clustered_kmeans <- mutate(clus_sf, cluster=model$cluster)
+
+farms_clustered_kmeans %>% group_by(cluster) %>% summarise_all(list(mean))
+ggplot(farms_clustered_kmeans, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
 
 
 

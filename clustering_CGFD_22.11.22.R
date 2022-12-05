@@ -14,15 +14,94 @@ library(cluster)
 library(dendextend)
 
 getwd()
-setwd("~/Landwirtschaftliche Betriebslehre/Data_clustering")
+setwd("~/Landwirtschaftliche Betriebslehre/Projekt_china_data/Dataclustering")
 
 cgfd_xiao <- read.table("Yumi_merged_final.csv", dec=".", sep=";", head=TRUE)
 glimpse(cgfd_xiao)
-
 summary(cgfd_xiao)
 head(cgfd_xiao, 10)
 
 
+################### How to approach Cluster analysis ####################
+# Def.: explanatory data analysis where obs are divided into meaningful groups that share common characteristics#
+
+# Preconditions: 
+                # 1. No missing data
+                # 2. Select the features
+                # 3. features need to be on a similiar scale, convert the varibles if they differ largely in the average or the expected variability
+                #    convert and standardize if necessary e.g. by (obs-mean)/sd()
+                #    or use the scale function for that - normalizes each feature to a mean of zero and a variance of 1
+
+# 4. Calculate the distance using the dist function, choose method euclidean or binary depending on the data (dummification might be needed for latter)
+#     dist_players<-dist(players, method="euclidean")
+# 
+# 5. Do the clustering using the hclust function; choose the linkage criteria: complete, single, average
+#     hc_players <- hclust(dist_players, method="complete")
+#     
+# 6. Exctracting the clusters, but k must be known for that, after that move to original dataset
+# cluster_assignments<- cutree(players, k=2)
+# players cluster <- mutate(players, cluster=cluster_assignments)
+# after that visualize
+    
+#Hierarchical clustering
+# # 7. Create dendogram first to decide upon the number of clusters
+# dend_players <- as.dendogram(hc_players)
+# dend_colored <- color_branches(dend_players, h=15)
+# plot(dend_colored)
+# 
+# # 8. Decide on the heigt and therefor on the amount of clusters to consider using cutree() with height
+# cluster_assignments <- cutree(hc_players, h=15)
+# players_clustered <- mutate(players, cluster=cluster_assignments)
+
+
+
+# 1st. clustering approach: Based on Xiaomin chemical fertilizer amount is correlated with farm size. Clustering for these to variables
+
+clus_sf <- cgfd_xiao %>% select(TotalFert_new, MaizeArea)
+summary(clus_sf)
+
+# eliminate NAs for both variables
+clus_sf <- clus_sf %>% filter(!is.na(TotalFert_new),!is.na(MaizeArea))
+summary(clus_sf)
+
+# median, mean is way different use scale to standaradize
+clus_sf_scaled <-scale(clus_sf)
+summary(clus_sf_scaled)
+
+# calculate the distance
+dis_clus_sf_scaled <- dist(clus_sf_scaled, method="euclidean")
+
+# perform clustering
+hc_dis_clus_sf_scaled <- hclust(dis_clus_sf_scaled, method="complete")
+
+
+# create dendogram
+dend_clus_sf <- as.dendrogram(hc_dis_clus_sf_scaled)
+plot(dend_clus_sf)
+
+# deciding on the k, or the height so to say
+dend_colored <- color_branches(dend_clus_sf, h=3)
+plot(dend_colored)
+
+cluster_assignments <- cutree(hc_dis_clus_sf_scaled, h=3)
+
+#Final step, add these clusters to the dataset, cut at h=3 leads to 6 cluster
+farms_clustered <- mutate(clus_sf, cluster=cluster_assignments)
+summary(farms_clusterd)
+
+# visualizing clusters
+ggplot(farms_clustered, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
+
+
+
+
+
+
+
+
+
+
+#---------------------------------------- Notes and first try
 test <- cgfd_xiao %>% select(HCODE,maizeyield3,TotalFert_new, PK)
 glimpse(test)
 test <- test %>% mutate(HCODE=as.factor(HCODE))

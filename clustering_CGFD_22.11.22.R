@@ -22,6 +22,7 @@ glimpse(cgfd_xiao)
 summary(cgfd_xiao)
 head(cgfd_xiao, 10)
 
+cgfd_xiao %>% filter(!is.na(MaizeArea), !is.na(maizeyield3), !is.na(TotalFert_new)) %>% count() # including maizeyield into the clustering leads to loss of additional 31 farms
 
 ################### How to approach Cluster analysis ####################
 # Def.: explanatory data analysis where obs are divided into meaningful groups that share common characteristics#
@@ -94,7 +95,7 @@ summary(farms_clusterd)
 ggplot(farms_clustered, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
 
 # calculating the mean by cluster
-farms_clusterd %>% group_by(cluster) %>% summarise_all(list(mean))
+farms_clustered %>% group_by(cluster) %>% summarise_all(list(mean))
 
 
 
@@ -121,7 +122,7 @@ farms_clustered_kmeans %>% group_by(cluster) %>% summarise_all(list(mean))
 ggplot(farms_clustered_kmeans, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
 
 
-
+#änderungen etc
 
 
 #---------------------------------------- Notes and first try

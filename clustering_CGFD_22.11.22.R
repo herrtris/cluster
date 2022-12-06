@@ -93,9 +93,45 @@ summary(farms_clustered)
 
 # visualizing clusters
 ggplot(farms_clustered, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
+ggplot(farms_clustered, aes(x=log(MaizeArea), y=TotalFert_new, color=factor(cluster)))+ geom_point() #some farms seem to have the same value for fertilizer application
+
 
 # calculating the mean by cluster
-farms_clustered %>% group_by(cluster) %>% summarise_all(list(mean))
+mean<-farms_clustered %>% group_by(cluster) %>% summarise_all(list(mean))
+n<-farms_clustered %>% group_by(cluster) %>% summarise(n=n())
+
+farms_clustered <- cbind(mean,n$n)
+farms_clustered %>% filter(cluster<5)
+farms_clustered
+
+
+#### Add a "regional" perspective. Where are these farms predominantly located?
+#### Read farm_code encoding
+farm_codes <- read_xlsx("Part0_mitHCCode_31.08.2022.xlsx", sheet = 2)
+summary(farm_codes)
+
+farm_codes <- farm_codes %>% select('Farmers code', 'Provinz, translated','Stadt, translated', 'Landkreis translated', 'Village translated', 'NCP Region')
+summary(farm_codes)
+
+farm_codes <- farm_codes %>% mutate(farm_codes=as.character(`Farmers code`) ) 
+  
+  
+  farmers_code=as.character('Farmers code')
+str(farm_codes)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ##################### clustering with kmeans method #####################
 
@@ -183,13 +219,28 @@ summary(farms_clustered_sfy)
 ggplot(farms_clustered_sfy, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
 ggplot(farms_clustered_sfy, aes(x=MaizeArea, y=maizeyield3, color=factor(cluster))) + geom_point()
 
+ggplot(farms_clustered_sfy, aes(x=log(MaizeArea), y=TotalFert_new, color=factor(cluster))) + geom_point()
+
+
+# Can I get this into a 3D plot?
+#install.packages("scatterplot3d")
+library(scatterplot3d)
+
+scatterplot3d(x=farms_clustered_sfy$MaizeArea, y=farms_clustered_sfy$TotalFert_new, z=farms_clustered_sfy$maizeyield3, color = factor(farms_clustered_sfy$cluster))
+
+scatterplot3d(x=farms_clustered_sfy$MaizeArea, y=farms_clustered_sfy$maizeyield3, z=farms_clustered_sfy$TotalFert_new, color = factor(farms_clustered_sfy$cluster))
 
 
 # calculating the mean by cluster
 means <-farms_clustered_sfy %>% group_by(cluster) %>% summarise_all(list(mean))  
 nobs<-farms_clustered_sfy %>% group_by(cluster) %>% summarize(n=n())
 
-cbind(means, nobs)
+sum_farms_clustered_sfy<-cbind(means, nobs$n)
+sum_farms_clustered_sfy %>% arrange(desc(TotalFert_new))
+sum_farms_clustered_sfy[-c(6,7),] %>% arrange(desc(TotalFert_new))
+
+##Excluding the ones with n<3, leaves 3 clusters using hierarchical clustering
+#5 high input - high yield, 1 high input medium yield, 4 medium input high yield, 2 medium input low yield, 3 low input low yield
 
 
 

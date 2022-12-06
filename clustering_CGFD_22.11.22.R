@@ -144,15 +144,52 @@ farms_clustered_kmeans_18 %>% group_by(cluster) %>% summarise_all(list(mean))
 ggplot(farms_clustered_kmeans_18, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
 
 
-### 
+### ######################################################################################################
+#### Clustering while including maize yield ##########################################################
+####################################################################################################
+
+clus_sfy <- cgfd_xiao %>% select(TotalFert_new, MaizeArea, maizeyield3)
+summary(clus_sfy)
+
+# eliminate NAs
+clus_sfy <- clus_sfy %>% filter(!is.na(TotalFert_new), !is.na(MaizeArea), !is.na(maizeyield3))
+
+# scaling
+clus_sfy_scaled <-scale(clus_sfy)
+summary(clus_sfy_scaled)
+
+# calculate the distance
+dis_clus_sfy_scaled <- dist(clus_sfy_scaled, method="euclidean")
+
+# perform clustering
+hc_dis_clus_sfy_scaled <- hclust(dis_clus_sfy_scaled, method="complete")
+
+
+# create dendogram
+dend_clus_sfy <- as.dendrogram(hc_dis_clus_sfy_scaled)
+plot(dend_clus_sfy)
+
+# deciding on the k, or the height so to say
+dend_colored_sfy <- color_branches(dend_clus_sfy, h=4)
+plot(dend_colored_sfy)
+
+cluster_assignments_sfy <- cutree(hc_dis_clus_sfy_scaled, h=4)
+
+#Final step, add these clusters to the dataset, cut at h=4 leads to 7 cluster
+farms_clustered_sfy <- mutate(clus_sfy, cluster=cluster_assignments_sfy)
+summary(farms_clustered_sfy)
+
+# visualizing clusters pairwise
+ggplot(farms_clustered_sfy, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
+ggplot(farms_clustered_sfy, aes(x=MaizeArea, y=maizeyield3, color=factor(cluster))) + geom_point()
 
 
 
+# calculating the mean by cluster
+means <-farms_clustered_sfy %>% group_by(cluster) %>% summarise_all(list(mean))  
+nobs<-farms_clustered_sfy %>% group_by(cluster) %>% summarize(n=n())
 
-
-
-
-
+cbind(means, nobs)
 
 
 

@@ -89,7 +89,7 @@ cluster_assignments <- cutree(hc_dis_clus_sf_scaled, h=3)
 
 #Final step, add these clusters to the dataset, cut at h=3 leads to 6 cluster
 farms_clustered <- mutate(clus_sf, cluster=cluster_assignments)
-summary(farms_clusterd)
+summary(farms_clustered)
 
 # visualizing clusters
 ggplot(farms_clustered, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
@@ -97,23 +97,21 @@ ggplot(farms_clustered, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster))
 # calculating the mean by cluster
 farms_clustered %>% group_by(cluster) %>% summarise_all(list(mean))
 
-
-
 ##################### clustering with kmeans method #####################
 
 # finding the right amount of clusters k with elbow method
-tot_wihinss <- map_dbl(1:10, function(k){
+tot_wihinss <- map_dbl(1:20, function(k){
                 model<- kmeans(x= clus_sf_scaled, centers = k)
                 model$tot.withinss})
 
 elbow_df <- data.frame(
-            k=1:10,
+            k=1:20,
             tot_withinss=tot_wihinss)
 
 print(elbow_df)
-ggplot(elbow_df, aes(x=k, y=tot_wihinss))+geom_line()+ scale_x_continuous(breaks=1:10)
+ggplot(elbow_df, aes(x=k, y=tot_wihinss))+geom_line()+ scale_x_continuous(breaks=1:20)
 
-# judging from the plot I would choose k=4 for clustering
+# judging from the plot I would choose k=4 or k=3 for clustering
 
 model <- kmeans(clus_sf_scaled, centers=4)
 farms_clustered_kmeans <- mutate(clus_sf, cluster=model$cluster)
@@ -122,7 +120,43 @@ farms_clustered_kmeans %>% group_by(cluster) %>% summarise_all(list(mean))
 ggplot(farms_clustered_kmeans, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
 
 
-#änderungen etc
+# "right" amount of k using silhouette analysis
+sil_width <- map_dbl(2:20, function(k) {
+             model <- pam(x=clus_sf_scaled, k=k)
+             model$silinfo$avg.width})
+
+sil_df <- data.frame(k=2:20, sil_width=sil_width)
+
+print(sil_df)
+ggplot(sil_df, aes(x=k, y=sil_width))+geom_line()+ scale_x_continuous(breaks=1:20)
+
+sil_df %>% arrange(desc(sil_width))
+
+# The silhouette width is more difficult to interpret
+        # highest for 18 - 20 - 17 - 19 - 16 15 - 14 - 2
+
+        # Lets try k means with 18 clusters
+
+model_18 <- kmeans(clus_sf_scaled, centers=18)
+farms_clustered_kmeans_18 <- mutate(clus_sf, cluster=model$cluster)
+
+farms_clustered_kmeans_18 %>% group_by(cluster) %>% summarise_all(list(mean))
+ggplot(farms_clustered_kmeans_18, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
+
+
+### 
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #---------------------------------------- Notes and first try

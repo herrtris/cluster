@@ -22,7 +22,46 @@ glimpse(cgfd_xiao)
 summary(cgfd_xiao)
 head(cgfd_xiao, 10)
 
-cgfd_xiao %>% filter(!is.na(MaizeArea), !is.na(maizeyield3), !is.na(TotalFert_new)) %>% count() # including maizeyield into the clustering leads to loss of additional 31 farms
+
+# Uploading the location file - to connect the location data
+
+farm_codes <- read_xlsx("Part0_mitHCCode_31.08.2022.xlsx", sheet = 2)
+summary(farm_codes)
+
+farm_codes <- farm_codes %>% select('Farmers code', 'Provinz, translated','Stadt, translated', 'Landkreis translated', 'Village translated', 'NCP Region')
+summary(farm_codes)
+
+farm_codes <- farm_codes %>% mutate(HCODE=as.character(`Farmers code`) ) 
+str(farm_codes)
+farm_codes <- farm_codes %>% select(-c("Farmers code"))
+
+cgfd_xiao <- cgfd_xiao %>% mutate(HCODE=as.character(HCODE))
+str(cgfd_xiao)
+
+# joining data
+test <- left_join(cgfd_xiao, farm_codes)
+str(cgfd_xiao)
+
+summary(test)
+summary(cgfd_xiao)
+head(test)
+
+# checking the duplicaes in the join
+test %>% group_by(HCODE) %>% count(HCODE) %>% filter(n>1)
+
+test%>% filter(HCODE=="1511101")
+test%>% filter(HCODE=="1513201")     #will be removed in clustering            
+test%>% filter(HCODE=="1531201")     # has to be checked again
+test%>% filter(HCODE=="1541102")     # remove one of them it is a duplicate
+test%>% filter(HCODE=="1723105")     # remove one of them it is a duplicate
+test%>% filter(HCODE=="1723106")     # will be removed in clustering
+test%>% filter(HCODE=="1743105")     # needs to be checked
+
+                 
+            
+
+
+
 
 ################### How to approach Cluster analysis ####################
 # Def.: explanatory data analysis where obs are divided into meaningful groups that share common characteristics#
@@ -103,23 +142,6 @@ n<-farms_clustered %>% group_by(cluster) %>% summarise(n=n())
 farms_clustered <- cbind(mean,n$n)
 farms_clustered %>% filter(cluster<5)
 farms_clustered
-
-
-#### Add a "regional" perspective. Where are these farms predominantly located?
-#### Read farm_code encoding
-farm_codes <- read_xlsx("Part0_mitHCCode_31.08.2022.xlsx", sheet = 2)
-summary(farm_codes)
-
-farm_codes <- farm_codes %>% select('Farmers code', 'Provinz, translated','Stadt, translated', 'Landkreis translated', 'Village translated', 'NCP Region')
-summary(farm_codes)
-
-farm_codes <- farm_codes %>% mutate(farm_codes=as.character(`Farmers code`) ) 
-  
-  
-  farmers_code=as.character('Farmers code')
-str(farm_codes)
-
-
 
 
 

@@ -49,19 +49,44 @@ head(test)
 # checking the duplicaes in the join
 test %>% group_by(HCODE) %>% count(HCODE) %>% filter(n>1)
 
-test%>% filter(HCODE=="1511101")
-test%>% filter(HCODE=="1513201")     #will be removed in clustering            
-test%>% filter(HCODE=="1531201")     # has to be checked again
+test%>% filter(HCODE=="1511101")     #will be removed in clustering             # 
+test%>% filter(HCODE=="1513201")     #will be removed in clustering             # 
+test%>% filter(HCODE=="1531201")     # has to be checked again                  #cleared
 test%>% filter(HCODE=="1541102")     # remove one of them it is a duplicate
 test%>% filter(HCODE=="1723105")     # remove one of them it is a duplicate
 test%>% filter(HCODE=="1723106")     # will be removed in clustering
 test%>% filter(HCODE=="1743105")     # needs to be checked
 
-                 
-            
 
+#treating duplicates
 
+test2<-test%>% filter(!(`Village translated`=="Cow Camp" & HCODE=="1531201"))
 
+test2 %>% filter(HCODE=="1511101" | HCODE=="1513201" | HCODE=="1541102") 
+                   
+test2<-test2%>% filter(!(`Stadt, translated`=="Luoyang" & HCODE=="1511101"))
+test2<-test2%>% filter(!(`Village translated`=="Houyuchicun" & HCODE=="1743105"))
+test2 %>% filter(HCODE=="1723105" | HCODE=="1723106" | HCODE=="1743105")
+
+# The function distinct() [dplyr package] can be used to keep only unique/distinct rows from a data frame. 
+# If there are duplicate rows, only the first row is preserved. It’s an efficient version of the R base function unique().
+test2 <-distinct(test2)
+                
+test2%>% filter(HCODE=="1511101")     #will be removed in clustering              #  take second cleared
+test2%>% filter(HCODE=="1513201")     #will be removed in clustering              #      
+test2%>% filter(HCODE=="1531201")     # has to be checked again                   #     cleared
+test2%>% filter(HCODE=="1541102")     # remove one of them it is a duplicate      # 
+test2%>% filter(HCODE=="1723105")     # remove one of them it is a duplicate      # 
+test2%>% filter(HCODE=="1723106")     # will be removed in clustering             # 
+test2%>% filter(HCODE=="1743105")     # needs to be checked                       # here want first
+
+# duplicates are treated now
+cgfd_xiao<-test2         
+
+rm(test)           
+rm(test2)
+
+summary(cgfd_xiao)
 
 ################### How to approach Cluster analysis ####################
 # Def.: explanatory data analysis where obs are divided into meaningful groups that share common characteristics#

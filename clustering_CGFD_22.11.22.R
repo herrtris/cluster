@@ -159,6 +159,23 @@ summary(farms_clustered)
 ggplot(farms_clustered, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
 ggplot(farms_clustered, aes(x=log(MaizeArea), y=TotalFert_new, color=factor(cluster)))+ geom_point() #some farms seem to have the same value for fertilizer application
 
+# adding regional component of provinces
+head(farms_clustered)
+
+test<-cgfd_xiao %>% filter(!is.na(TotalFert_new) , !is.na(MaizeArea))
+test <- test %>% select(-c(MaizeArea, TotalFert_new))
+
+test <-cbind(test,farms_clustered)
+summary(test)
+
+# chhecking test and cgfd_xiao must contain same values for Totalfert and maizearea
+cgfd_xiao %>% filter(HCODE=="1511103")
+test %>% filter(HCODE=="1511103")
+
+# facet_wrap by different geographical scales
+ggplot(test, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point() +facet_wrap(~`Provinz, translated`)
+
+
 
 # calculating the mean by cluster
 mean<-farms_clustered %>% group_by(cluster) %>% summarise_all(list(mean))

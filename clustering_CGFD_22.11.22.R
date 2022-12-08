@@ -287,12 +287,12 @@ dend_clus_sfy <- as.dendrogram(hc_dis_clus_sfy_scaled)
 plot(dend_clus_sfy)
 
 # deciding on the k, or the height so to say
-dend_colored_sfy <- color_branches(dend_clus_sfy, h=4)
+dend_colored_sfy <- color_branches(dend_clus_sfy, h=5)
 plot(dend_colored_sfy)
 
-cluster_assignments_sfy <- cutree(hc_dis_clus_sfy_scaled, h=4)
+cluster_assignments_sfy <- cutree(hc_dis_clus_sfy_scaled, h=5)
 
-#Final step, add these clusters to the dataset, cut at h=4 leads to 7 cluster
+#Final step, add these clusters to the dataset, cut at h=5 leads to 6 cluster
 farms_clustered_sfy <- mutate(clus_sfy, cluster=cluster_assignments_sfy)
 summary(farms_clustered_sfy)
 
@@ -321,8 +321,48 @@ means[-c(6,7),] %>% arrange(desc(`mean(TotalFert_new)`))
 ##Excluding the ones with n<3, leaves 3 clusters using hierarchical clustering
 #5 high input - high yield, 1 high input medium yield, 4 medium input high yield, 2 medium input low yield, 3 low input low yield
 
+##################################### adding k means ############################################################################
+
+# finding the right amount of clusters k with elbow method
+tot_wihinss <- map_dbl(1:20, function(k){
+  model<- kmeans(x= clus_sfy_scaled, centers = k)
+  model$tot.withinss})
+
+elbow_df <- data.frame(
+  k=1:20,
+  tot_withinss=tot_wihinss)
+
+print(elbow_df)
+ggplot(elbow_df, aes(x=k, y=tot_wihinss))+geom_line()+ scale_x_continuous(breaks=1:20)
+
+# diffcult to judge about a k from this plot perhaps 5 or 6?? siluoette method??
 
 
+# "right" amount of k using silhouette analysis
+sil_width <- map_dbl(2:20, function(k) {
+  model <- pam(x=clus_sfy_scaled, k=k)
+  model$silinfo$avg.width})
+
+sil_df <- data.frame(k=2:20, sil_width=sil_width)
+
+print(sil_df)
+ggplot(sil_df, aes(x=k, y=sil_width))+geom_line()+ scale_x_continuous(breaks=1:20)
+
+sil_df %>% arrange(desc(sil_width))
+
+
+# judging from the plots I would choose k=8 for clustering
+
+model <- kmeans(clus_sfy_scaled, centers=8)
+farms_clustered_kmeans <- mutate(clus_sfy, cluster=model$cluster)
+
+means <-farms_clustered_kmeans %>% group_by(cluster) %>% summarise(mean(TotalFert_new), mean(MaizeArea),mean(maizeyield3), n=n())
+
+ggplot(farms_clustered_kmeans, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
+
+means %>% arrange(desc(`mean(TotalFert_new)`))
+
+############################################################################################################
 ############################ Clusterin including 4 variables ###############################################
 ############################################################################################################
 
@@ -364,21 +404,13 @@ summary(farms_clustered_sfyg)
 ggplot(farms_clustered_sfyg, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
 ggplot(farms_clustered_sfyg, aes(x=log(MaizeArea), y=TotalFert_new, color=factor(cluster)))+ geom_point() 
 
-# adding regional component of provinces
-head(farms_clustered)
 
-test<-cgfd_xiao %>% filter(!is.na(TotalFert_new), !is.na(MaizeArea), !is.na(maizeyield3), !is.na(Grainincome))
-test <- test %>% select(-c(MaizeArea, TotalFert_new))
-
-clustering_sfyg <-cbind(test,farms_clustered_sfyg)
-summary(plot_clustering_1)
-rm(test)
 
 # calculating the mean by cluster
 means_sfyg <-farms_clustered_sfyg %>% group_by(cluster) %>% summarise(mean(TotalFert_new), mean(MaizeArea), mean(maizeyield3), mean(Grainincome), n=n())  
 
 means_sfyg %>% arrange(desc(`mean(TotalFert_new)`))
-means_sfyg
+
 
 ################################## Continued with kmeans #############################################################################################
 
@@ -412,8 +444,75 @@ means_sfyg %>% arrange(desc(`mean(TotalFert_new)`))
 ggplot(farms_clustered_kmeans_sfyg, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
 
 
+################## checking silhouette width for completion #########################
+# "right" amount of k using silhouette analysis
+sil_width <- map_dbl(2:20, function(k) {
+  model <- pam(x=clus_sfyg_scaled, k=k)
+  model$silinfo$avg.width})
+
+sil_df <- data.frame(k=2:20, sil_width=sil_width)
+
+print(sil_df)
+ggplot(sil_df, aes(x=k, y=sil_width))+geom_line()+ scale_x_continuous(breaks=1:20)
+
+sil_df %>% arrange(desc(sil_width))
+
+# Silhouette analysis indicates rather higher level for k, but is "okay" at k=7...
 
 
+### adding a more "regional" perspective, find out a share - how many of which province belong to specifc cluster
+
+########################################### Province Perspective #################################################
+
+
+# adding regional component of provinces
+head(farms_clustered_kmeans_sfyg)
+
+test<-cgfd_xiao %>% filter(!is.na(TotalFert_new), !is.na(MaizeArea), !is.na(maizeyield3), !is.na(Grainincome))
+test <- test %>% select(-c(MaizeArea, TotalFert_new, maizeyield3, Grainincome))
+
+str(test)
+str(farms_clustered_kmeans_sfyg)
+
+# assumption Reihenfolge bleibt gleich in datasets, short check
+cgfd_xiao %>% select(TotalFert_new, MaizeArea, maizeyield3, Grainincome) %>% 
+              filter(!is.na(TotalFert_new), !is.na(MaizeArea), !is.na(maizeyield3), !is.na(Grainincome)) %>%
+              head(n=5)
+
+farms_clustered_kmeans_sfyg %>% head(n=5)
+
+## the order of the farms stays the same I can combine them
+
+# somth does not work out there should be the same means etc and ns as before
+
+means_sfyg <-farms_clustered_kmeans_sfyg %>% group_by(cluster) %>% summarise(mean(TotalFert_new), mean(MaizeArea), mean(maizeyield3), mean(Grainincome), n=n())  
+means_sfyg
+means_sfyg %>% arrange(desc(`mean(TotalFert_new)`))
+
+
+clustering_kmeans_sfyg <-cbind(test,farms_clustered_kmeans_sfyg)
+summary(plot_clustering_1)
+
+
+means_combined <-clustering_kmeans_sfyg %>% group_by(cluster) %>% summarise(mean(TotalFert_new), mean(MaizeArea), mean(maizeyield3), mean(Grainincome), n=n())  
+means_combined
+means_combined %>% arrange(desc(`mean(TotalFert_new)`))
+
+
+
+
+
+pivot<-clustering_kmeans_sfyg %>% group_by(cluster, `Provinz, translated`) %>% count() 
+pivot
+
+# Stacked
+sp <-ggplot(pivot, aes(fill=cluster, y=n, x=`Provinz, translated`) ) + 
+  geom_bar(position="stack", stat="identity") 
+
+sp
+
+ggplot(pivot, aes(fill=`Provinz, translated`, y=n, x=cluster) ) + 
+  geom_bar(position="stack", stat="identity") +scale_x_continuous(breaks=1:7)
 
 
 

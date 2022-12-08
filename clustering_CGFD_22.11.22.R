@@ -204,17 +204,6 @@ farms_clustered %>% filter(cluster<5)
 farms_clustered
 
 
-
-
-
-
-
-
-
-
-
-
-
 ##################### clustering with kmeans method #####################
 
 # finding the right amount of clusters k with elbow method
@@ -234,9 +223,15 @@ ggplot(elbow_df, aes(x=k, y=tot_wihinss))+geom_line()+ scale_x_continuous(breaks
 model <- kmeans(clus_sf_scaled, centers=4)
 farms_clustered_kmeans <- mutate(clus_sf, cluster=model$cluster)
 
-farms_clustered_kmeans %>% group_by(cluster) %>% summarise_all(list(mean))
+farms_clustered_kmeans %>% group_by(cluster) %>% summarise(mean(TotalFert_new), mean(MaizeArea), n=n())
+
 ggplot(farms_clustered_kmeans, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
 
+
+
+############################################################### silhouette analysis k means ######################################################
+# How many ks are necessary
+###################################################################################################################################################
 
 # "right" amount of k using silhouette analysis
 sil_width <- map_dbl(2:20, function(k) {
@@ -256,15 +251,19 @@ sil_df %>% arrange(desc(sil_width))
         # Lets try k means with 18 clusters
 
 model_18 <- kmeans(clus_sf_scaled, centers=18)
-farms_clustered_kmeans_18 <- mutate(clus_sf, cluster=model$cluster)
+farms_clustered_kmeans_18 <- mutate(clus_sf, cluster=model_18$cluster)
 
-farms_clustered_kmeans_18 %>% group_by(cluster) %>% summarise_all(list(mean))
+#farms_clustered_kmeans_18 %>% group_by(cluster) %>% summarise_all(list(mean))
 ggplot(farms_clustered_kmeans_18, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
 
 
 ### ######################################################################################################
 #### Clustering while including maize yield ##########################################################
 ####################################################################################################
+
+# 3 variables: totalfertnew, maizearea, maizeyield
+
+
 
 clus_sfy <- cgfd_xiao %>% select(TotalFert_new, MaizeArea, maizeyield3)
 summary(clus_sfy)
@@ -314,15 +313,113 @@ scatterplot3d(x=farms_clustered_sfy$MaizeArea, y=farms_clustered_sfy$maizeyield3
 
 
 # calculating the mean by cluster
-means <-farms_clustered_sfy %>% group_by(cluster) %>% summarise_all(list(mean))  
-nobs<-farms_clustered_sfy %>% group_by(cluster) %>% summarize(n=n())
+means <-farms_clustered_sfy %>% group_by(cluster) %>% summarise(mean(TotalFert_new), mean(MaizeArea), mean(maizeyield3), n=n())  
 
-sum_farms_clustered_sfy<-cbind(means, nobs$n)
-sum_farms_clustered_sfy %>% arrange(desc(TotalFert_new))
-sum_farms_clustered_sfy[-c(6,7),] %>% arrange(desc(TotalFert_new))
+means %>% arrange(desc(`mean(TotalFert_new)`))
+means[-c(6,7),] %>% arrange(desc(`mean(TotalFert_new)`))
 
 ##Excluding the ones with n<3, leaves 3 clusters using hierarchical clustering
 #5 high input - high yield, 1 high input medium yield, 4 medium input high yield, 2 medium input low yield, 3 low input low yield
+
+
+
+############################ Clusterin including 4 variables ###############################################
+############################################################################################################
+
+# TotalFert_New, MaizeArea, Grainincome, maizeyield
+
+clus_sfyg <- cgfd_xiao %>% select(TotalFert_new, MaizeArea, maizeyield3, Grainincome)
+summary(clus_sfyg)
+
+# eliminate NAs
+clus_sfyg <- clus_sfyg %>% filter(!is.na(TotalFert_new), !is.na(MaizeArea), !is.na(maizeyield3), !is.na(Grainincome))
+
+# scaling
+clus_sfyg_scaled <-scale(clus_sfyg)
+summary(clus_sfyg_scaled)
+
+# calculate the distance
+dis_clus_sfyg_scaled <- dist(clus_sfyg_scaled, method="euclidean")
+
+# perform clustering
+hc_dis_clus_sfyg_scaled <- hclust(dis_clus_sfyg_scaled, method="complete")
+
+
+# create dendogram
+dend_clus_sfyg <- as.dendrogram(hc_dis_clus_sfyg_scaled)
+plot(dend_clus_sfyg)
+
+# deciding on the k, or the height so to say
+dend_colored_sfyg <- color_branches(dend_clus_sfyg, h=5)
+plot(dend_colored_sfyg)
+
+cluster_assignments_sfyg <- cutree(hc_dis_clus_sfyg_scaled, h=5)
+
+#Final step, add these clusters to the dataset, cut at h=5 leads to 7 cluster
+farms_clustered_sfyg <- mutate(clus_sfyg, cluster=cluster_assignments_sfyg)
+summary(farms_clustered_sfyg)
+
+
+# visualizing clusters
+ggplot(farms_clustered_sfyg, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
+ggplot(farms_clustered_sfyg, aes(x=log(MaizeArea), y=TotalFert_new, color=factor(cluster)))+ geom_point() 
+
+# adding regional component of provinces
+head(farms_clustered)
+
+test<-cgfd_xiao %>% filter(!is.na(TotalFert_new), !is.na(MaizeArea), !is.na(maizeyield3), !is.na(Grainincome))
+test <- test %>% select(-c(MaizeArea, TotalFert_new))
+
+clustering_sfyg <-cbind(test,farms_clustered_sfyg)
+summary(plot_clustering_1)
+rm(test)
+
+# calculating the mean by cluster
+means_sfyg <-farms_clustered_sfyg %>% group_by(cluster) %>% summarise(mean(TotalFert_new), mean(MaizeArea), mean(maizeyield3), mean(Grainincome), n=n())  
+
+means_sfyg %>% arrange(desc(`mean(TotalFert_new)`))
+means_sfyg
+
+################################## Continued with kmeans #############################################################################################
+
+# finding the right amount of clusters k with elbow method
+tot_wihinss <- map_dbl(1:20, function(k){
+  model<- kmeans(x= clus_sfyg_scaled, centers = k)
+  model$tot.withinss})
+
+elbow_df <- data.frame(
+  k=1:20,
+  tot_withinss=tot_wihinss)
+
+print(elbow_df)
+ggplot(elbow_df, aes(x=k, y=tot_wihinss))+geom_line()+ scale_x_continuous(breaks=1:20)
+
+# Nice!! Elbow method also leads to clustering of K=7
+
+model_sfyg <- kmeans(clus_sfyg_scaled, centers=7)
+
+
+farms_clustered_kmeans_sfyg <- mutate(clus_sfyg, cluster=model_sfyg$cluster)
+summary(farms_clustered_kmeans_sfyg)
+
+means_sfyg <-farms_clustered_kmeans_sfyg %>% group_by(cluster) %>% summarise(mean(TotalFert_new), mean(MaizeArea), mean(maizeyield3), mean(Grainincome), n=n())  
+means_sfyg
+
+means_sfyg %>% arrange(desc(`mean(TotalFert_new)`))
+
+
+
+ggplot(farms_clustered_kmeans_sfyg, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point()
+
+
+
+
+
+
+
+
+
+
 
 
 

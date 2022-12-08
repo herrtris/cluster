@@ -165,17 +165,35 @@ head(farms_clustered)
 test<-cgfd_xiao %>% filter(!is.na(TotalFert_new) , !is.na(MaizeArea))
 test <- test %>% select(-c(MaizeArea, TotalFert_new))
 
-test <-cbind(test,farms_clustered)
-summary(test)
+plot_clustering_1 <-cbind(test,farms_clustered)
+summary(plot_clustering_1)
+rm(test)
 
 # chhecking test and cgfd_xiao must contain same values for Totalfert and maizearea
 cgfd_xiao %>% filter(HCODE=="1511103")
-test %>% filter(HCODE=="1511103")
+plot_clustering_1 %>% filter(HCODE=="1511103")
 
 # facet_wrap by different geographical scales
-ggplot(test, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point() +facet_wrap(~`Provinz, translated`)
+ggplot(plot_clustering_1, aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point() +facet_wrap(~`Provinz, translated`)
+
+# check the provinces villages
+ggplot(plot_clustering_1%>%filter(`Provinz, translated`=="Hebei"), aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point() +
+                        facet_wrap(~`Landkreis translated`)
+
+ggplot(plot_clustering_1%>%filter(`Provinz, translated`=="Heilongjiang"), aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point() +
+  facet_wrap(~`Landkreis translated`)
+
+ggplot(plot_clustering_1%>%filter(`Provinz, translated`=="Henan"), aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point() +
+  facet_wrap(~`Landkreis translated`)
+
+ggplot(plot_clustering_1%>%filter(`Provinz, translated`=="Jilin"), aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point() +
+  facet_wrap(~`Landkreis translated`)
+
+ggplot(plot_clustering_1%>%filter(`Provinz, translated`=="Shandong"), aes(x=MaizeArea, y=TotalFert_new, color=factor(cluster)))+ geom_point() +
+  facet_wrap(~`Landkreis translated`)
 
 
+# Despite clustering by county there is still a big variance in the data, despite seeing some similiarities in counties
 
 # calculating the mean by cluster
 mean<-farms_clustered %>% group_by(cluster) %>% summarise_all(list(mean))
